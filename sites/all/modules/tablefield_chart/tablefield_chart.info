@@ -1,0 +1,13 @@
+name = Tablefield Chart
+description = Provides a display formatter for TableField fields to display the table data as a chart using the Charts module
+package = Fields
+core = 7.x
+
+dependencies[] = charts
+dependencies[] = tablefield
+; Information added by Drupal.org packaging script on 2016-01-26
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "tablefield_chart"
+datestamp = "1453848840"
+

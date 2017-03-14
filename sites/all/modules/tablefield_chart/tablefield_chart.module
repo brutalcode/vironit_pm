@@ -1,0 +1,190 @@
+<?php
+
+/**
+ * Implementation of hook_field_formatter_info().
+ */
+function tablefield_chart_field_formatter_info() {
+
+  $info = charts_info();  
+  if(empty($info)) {  
+    return;
+  }
+
+  $formatter_info['tablefield_chart'] = array(
+    'label' => t('Chart View'),
+    'field types' => array('tablefield'),
+    'settings' => array('chart_type' => 'line', 'chart_library' => '_default'),
+  );
+  return $formatter_info;
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function tablefield_chart_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+  
+  if ($display['type'] === 'tablefield_chart') {
+    
+    $type_options = array();
+    foreach (charts_type_info() as $type => $info) {
+      $type_options[$type] = $info['label'];
+    }    
+    
+    $element['chart_type'] = array(
+      '#type'  => 'select',
+      '#title' => t('Chart Type'),
+      '#description' => t('Select which chart type to display'),
+      '#default_value' => $settings['chart_type'],
+      '#options' => $type_options
+    );
+    
+    
+    $charts_info = charts_info();
+    $library_options = array();
+    foreach ($charts_info as $library_name => $library_info) {
+      $library_options[$library_name] = $library_info['label'];
+    }
+    $element['chart_library'] = array(
+      '#type'  => 'select',
+      '#title' => t('Chart Library'),
+      '#description' => t('Select which chart library to use'),
+      '#default_value' => $settings['chart_library'],
+      '#options' => array(
+        '_default'  => 'Charts Default',
+      ) + $library_options,
+    );
+  }
+  
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function tablefield_chart_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  
+  if ($display['type']== 'tablefield_chart') {
+        
+    $type_info = charts_type_info();
+    $charts_info = charts_info();
+    
+    $library = $settings['chart_library'];
+    if (isset($charts_info[$settings['chart_library']])) {
+      $library = $charts_info[$settings['chart_library']]['label'];
+    }
+    
+    $summary = t('Display as a %library chart, using a %chart_type layout', array(
+      '%chart_type' => $type_info[$settings['chart_type']]['label'],
+      '%library' => $library,
+    ));
+  }
+  
+  return $summary;  
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function tablefield_chart_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $display['settings'];
+  $formatter = $display['type'];
+
+  foreach ($items as $delta => $table) {
+
+    // Rationalize the stored data
+    if (!empty($table['tabledata'])) {
+      $tabledata = $table['tabledata'];
+    }
+    elseif (!empty($table['value'])) {
+      $tabledata = tablefield_rationalize_table(unserialize($table['value']));
+    }
+
+    // Run the table through input filters
+    if (isset($tabledata)) {
+      
+      if (!empty($tabledata)) {
+        foreach ($tabledata as $row_key => $row) {
+          foreach ($row as $col_key => $cell) {
+            $tabledata[$row_key][$col_key] = check_plain($cell);
+          }
+        }
+      }
+
+      // Pull the header for theming
+      $header_data = array_shift($tabledata);
+      
+      if ( $settings['chart_library'] == '_default' ) {
+        $charts_info = charts_info();
+        $chart_defaults = variable_get('charts_default_settings', array(
+          'library' => key($charts_info),
+        ));
+        $chart_library = $chart_defaults['library'];
+      }
+      else {
+        $chart_library = $settings['chart_library'];
+      }
+
+      // Build a chart ID for easy altering by modules
+      $chart_id_values = array(
+        $formatter,
+        $instance['field_name'],
+      );
+
+      $chart = array(
+        '#type' => 'chart',
+        '#chart_type' => $settings['chart_type'],
+        '#chart_library' => $chart_library,
+        '#title' => '',        
+        '#chart_id' => implode("__", $chart_id_values)
+      );
+      
+      foreach ($header_data as $headindex => $header_value) {
+        if (!empty($header_value)) {
+          $values = array();
+          foreach ($tabledata as $row) {
+            if ($headindex == 0) {
+              array_push($values, $row[$headindex]);
+            }
+            else {
+              array_push($values, (float)$row[$headindex]);
+            }
+          }
+          if ($headindex == 0) {
+            $chart['xaxis'] = array(
+              '#type' => 'chart_xaxis',
+              '#labels' => $values,
+              '#title' => $header_value,
+            );
+          }
+          else {
+            $chart[$header_value] = array(
+              '#type' => 'chart_data',
+              '#title' => $header_value,
+              '#data' => $values,
+            );
+          }    
+        }
+      }
+      
+      // If we have exactly two columns don't display legend display y-axis title instead.
+      if (sizeof($header_data) == 2) {
+        $chart['yaxis'] = array(
+          '#type' => 'chart_yaxis',
+          '#title' => $header_data[1],
+        );
+      }
+      
+      $element[$delta]['chart'] = $chart;
+    }
+  }
+  
+  return $element;
+}
+

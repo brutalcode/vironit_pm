@@ -1,0 +1,11 @@
+name = Help for projects managers
+description = 
+package = Help projec modules
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2017-01-10
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "my_pm"
+datestamp = "1484076787"
+

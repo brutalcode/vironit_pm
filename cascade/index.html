@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+<h2>Cascade Drupal Theme Documentation</h2>
+<i>last updated by Margots from DesignsSquare.com Feb 14, 2014</i>
+<h3>Installation</h3>
+<h4>Whats included?</h4>
+<p>
+    There are module cascade_theme containing two submodules - designssquare_com_theme_cascade_structure and designssquare_com_theme_cascade_data. The designssquare_com_theme_cascade_structure contains the structure required for Cascade theme to function. The designssquare_com_theme_cascade_data contains sample data and is not required for theme to function
+</p>
+
+<h4>How To Install?</h4>
+<p>In the following are the steps to install Cascade theme</p>
+<ol>
+    <li>Copy module cascade_theme module into sites/all/modules folder</li>
+    <li>Copy themes "boostrap" and "cascade" into sites/all/themes folder</li>
+    <li>Ensure module 'jquery_update 7.x-2.x-dev' is present, enabled and set to version 1.10(admin/config/development/jquery_update)</li>
+    <li>Enable theme 'bootstrap'</li>
+    <li>Enable and set default theme 'cascade'</li>
+    <li>Enable module designssquare_com_theme_cascade_structure. Ensure its not override state. if so, re-enable till its it in the default state</li>
+    <li>Enable module designssquare_com_theme_cascade_data if you wish sample data(recommended). Ensure its not in override state. if so, re-enable till its it in the default state</li>
+    <li>Enable module designssquare_com_menu_importer_cascade to fix main and user menu. Note: this will clear current Main, user menu</li>
+    <li>clear all cache</li>
+</ol>
+
+<h3>About</h3>
+<h4>Overall</h4>
+<p>All pages that has a particular dependencies(i.e. js,css) is in their own content type(i.e inbox, gallery,etc.) All other pages are of type 'Basic Page' </p>
+<p>All content types come with two custom fields - page_title and page_info. Page title field displays the title and it can contain icon tags. The page_info is a little discription or intro of the page that opens up once user clicks on 'info' icon</p>
+<p>For carousel to work, you have to copy images accordingly that are currently in 'themes/cascade/images/carousel' folder</p>
+<p>All the images and the design is stored in the /design folder. You will have to copy images accordangly</p>
+<h4>About Menus</h4>
+<p>To have icons in the the menu item, make sure you add the html icon tags in the menu item title (i.e.<i class="fa fa-calendar"></i><span class="hidden-minibar"> Calendar</span>). Also ensure you select 'Allow html' for the menu item containing the icon, thus, html</p>
+<p>To have a drop down menu functional, ensure that the menu item with the drop down items is configured with 'show as expanded' setting or checked</p>
+<p>For user menu the menu item 'log out' has to be the last one in the menu</p>
+
+<h4>About Regions</h4>
+<p>There are two new regions - 'Pate Top Bar' and 'User Popover'. The 'Page Top Bar' is an area on right of the page title used for search block but can be for any other block.</p>
+<p>The 'User Popover' is the region that opens open when clicked on the user name on the right side of the Theme header. A typical usage for this region is to assign User Menu</p>
+
+<h3>Dependent Modules</h3>
+<ul>
+    <li>menu_html : to allow html in menu items</li>
+    <li>context : to reuse blocks such as search block,etc</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+<p><b>1. Menu item shows up in html tags</b><br>
+    Make sure you have set 'Allow html' for the particular menu element that can be done either at the Page Options or Menu/Edit Menu Item
+</p>
+<p><b>2. Menu item is not dropping down</b><br>
+    Make sure the menu item with sub menu is set to 'Show as expanded' in the Menu configurations
+</p>
+
+<p><b>3. Cannot Revert Designssquare_com_theme_cascade_structure module</b>
+    Make sure the Themes - Bootstrap and Cascade is enabled. There are variables in the Designssquare_com_theme_cascade_structure module that require both Themes enabled in order revert
+</p>
+
+<h3>Things In Progress</h3>
+<ul>
+    <li>Fix SafeFile initialization and then make it configurable from UI(see js/core.js and $.failsafe</li>
+    <li>Make Tour UI configurable(see dashboard-custom.js and tour.start())</li>
+    <li>Extract Right side Styler into separate block and enable to configure visibility of right sidebar</li>
+    <li>Add Top Navbar Layout with new menu at the top</li>
+    <li>Add Unlimited Menu item to the main menu to demonstrate more than 2 level menu</li>
+    <li>Consider re-implement how dependencies handled. Instead, separate content types have an option for node that loads dependencies</li>
+    <li>Refactor designssquare_com_theme_structure feature to extract out blocks settings related to theme to avoid "override" state on module install</li>
+    <li>Create default url for landing page, 404,403 and incorporate it into designssquare_com_theme_cascade_data module</li>
+</ul>
+
+<h3>Release 0.2</h3>
+<ul>
+    <li>Menu fix to expand in any page not only defined Node instances</li>
+    <li>Fix for admin overlay Jquery conflicts with Designs jquery</li>
+    <li>Error warnings</li>
+    <li>Site name, logo to toggle and configure from Theme setting UI</li>
+    <li>User menu implemented with new region 'User Popover'</li>
+    <li>Issue changing color from Styler fixed</li>
+    <li>Fix search block padding for first sidebar</li>
+</ul>
+
+<h3>Release 0.3</h3>
+<ul>
+    <li>Menu import fixed. Also it preservers current menu items</li>
+    <li>Fixed Title 'Not Found' issue</li>
+    <li>Fixed user image upload issue</li>
+    <li>Added so that ANONYMOUS USERS name(admin/config/people/accounts) is used for none authenticated users for visitor name</li>
+    <li>Login, Registration, Reset password and lock screen added. The design we have from designer has issue in Firefox. I am getting the fix from Designer</li>
+</ul>
+<h3>Release 0.4</h3>
+<ul>
+    <li>Look into why it is not showing up menu links(main menu and user menu) on 404 request. It turns out that it is by Drupal design(https://drupal.org/node/233807). The drupal theme Cascade has 404 template. Please, consider solution to assign Node of the 404 template to site's Default 404 (not found) page(admin/config/system/site-information). The developers alternative might be to implement hook_page_alter() to add menus to the content on 404 request </li>
+    <li>Fix the login screen menu shows up on the left but is too high and blocks all messages</li>
+    <li>Fix for lock screen is implemented as a theme setting to hide or make visiable lock screen. Since Drupal core doesn't come with the lock screen functionality while the Cascade design has the layout for it, our solution is to provide a configuration to hide lock screen so those who like to develop missing lock screen functionality have the layout available</li>
+    <li>Fix search functionality</li>
+    <li>fix login input text to show up for Firefox</li>
+</ul>
+<h3>Release 0.5</h3>
+<ul>
+    <li>fix Extended Modals</li>
+    <li>added missing Timeline. The newest version of Timeline is going to be incorporated when we receive it from designer in near future</li>
+    <li>breadcrumbs fix for themes run on windows server</li>
+    <li>fix of 404/505 pages for themes run on windows server</li>
+    <li>fix page tabs view/edit/devel to no conflict with design js functionality</li>
+</ul>
+<h3>Release 0.6</h3>
+<ul>
+    <li>admin jquery update to 1.10(Note: Requires jquery_update dev ver 2.x-dev)</li>
+    <li>fix jquary accordion lib conflict with drupal admin overlay</li>
+    <li>fix responsive main menu icon functionality</li>
+</ul>
+</body>
+</html>

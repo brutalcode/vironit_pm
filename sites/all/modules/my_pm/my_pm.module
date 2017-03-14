@@ -1,0 +1,691 @@
+<?php
+
+/**
+ * @file
+ * File description
+ */
+
+/**
+ * About project
+ */
+
+/**
+ * Implements hook_help().
+ */
+function my_pm_help($path, $arg) {
+  
+}
+
+
+/**
+ * Implements hook_user_insert().
+ */
+function my_pm_user_insert(&$edit, $account, $category) {
+   	
+	// Проверка по типу регистрации компания/физ.лицо
+ 	if ($edit['field_type_reg']['und'][0]['value'] == 1) {
+
+	//Создание новой группы для организации
+	$gid = db_insert('groups')
+		->fields(array(
+		  // 'title' => $edit['field_company_name']['und'][0]['value'],
+		  'title' => $account->name,
+		  'type' => 'organization',
+		  // 'gid' => $account->uid,
+		))
+		->execute();
+	// Добавление членства в группу
+	$mid = db_insert('group_membership')
+		->fields(array(
+		  'gid' => $gid,
+		  'uid' => $account->uid,
+		  'status' => 'active',
+		))
+	    ->execute();
+	// Добавление роли
+	db_insert('group_membership_role')
+		->fields(array(
+		  'mid' => $mid,
+		  'role' => 'pm_admin',
+		))
+	    ->execute();
+
+	db_insert('url_alias')
+		->fields(array(
+		  'alias' => $account->name,
+		  'source' => 'group/'. $gid,
+		  'language' => LANGUAGE_NONE,
+		))
+	    ->execute();
+	db_insert('url_alias')
+		->fields(array(
+		  'alias' =>  $account->name . '/node/add/idea',
+		  'source' => 'group/'. $gid . '/node/add/idea',
+		  'language' => LANGUAGE_NONE,
+		))
+	    ->execute();
+	db_insert('url_alias')
+		->fields(array(
+		  'alias' =>  $account->name . '/node/add/project',
+		  'source' => 'group/'. $gid . '/node/add/project',
+		  'language' => LANGUAGE_NONE,
+		))
+	    ->execute();
+	// Создание ссылки меню
+	$item = array (
+	  'link_title' => 'Administration',
+	  'link_path' => 'group/'.$gid,
+	  'menu_name' => 'main-menu',
+	  'weight' => 0,
+	  'plid' => 0,
+	);
+	menu_link_save($item);
+
+ 	} else {
+   // Применение роли в зависимости от типа регистрации
+	
+ 	}
+}
+/**
+ * Implements hook_theme().
+ */
+function my_pm_theme() {
+  return array(
+    'idea_costs_form' => array(
+      'render element' => 'form',
+      'template' => 'idea_costs_form',
+    ),
+    'idea_incomes_form' => array(
+      'render element' => 'form',
+      'template' => 'idea_incomes_form',
+    ),
+  );
+}
+
+/**
+ * Realization form for node--idea paget (stage-4 selected ided).
+ */
+function idea_selected_form ($form, &$form_state){
+  $form = array();
+
+  $form['idea_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['select_idea'] = array(
+    '#type' => 'submit',
+    '#value' => t('Select idea'),
+    '#id' => 'btn-select-idea',
+  );
+
+  $form['unselect_idea'] = array(
+    '#type' => 'submit',
+    '#value' => t('Unselect idea'),
+    '#id' => 'btn-unselect-idea',
+  );
+
+  return $form;
+}
+function idea_selected_form_validate ($form, &$form_state){
+	
+}
+function idea_selected_form_submit ($form, &$form_state){
+	// debug($form_state['clicked_button']['#id']);
+
+	$idea_id = $form_state['input']['idea_id'];
+	$idea = node_load($idea_id);
+	if ($form_state['clicked_button']['#id'] == 'btn-select-idea') {
+		$idea->field_idea_selected = array (
+			  'und' => 
+			  array (
+			    0 => 
+			    array (
+			      'value' => '1',
+			    ),
+			  ),
+			);
+	} else {
+		$idea->field_idea_selected = array ();
+	}
+	node_save($idea);
+
+}
+
+function idea_costs_form ($form, &$form_state){
+	 $form = array();
+
+  $form['idea_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+  $form['idea_rev_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save costs'),
+    // '#id' => 'btn-unselect-idea',
+  );
+
+  return $form;
+}
+function idea_costs_form_validate ($form, &$form_state){
+
+
+	/*foreach ($form_state['input'] as $key => $value) {
+		if (preg_match('/^capex-cost-amount/', $key) || preg_match('/^capex-cost-quantity/', $key )){
+			is_numeric($value) ? : form_set_error('', t("All filed should be contain a integer type")); ;
+		}
+		if (preg_match('/^opex-cost-amount/', $key) || preg_match('/^opex-cost-quantity/', $key ) || preg_match('/^opex-cost-period/', $key )){
+			is_numeric($value) ? : form_set_error('', t("All filed should be contain a integer type")); ;
+		}
+	}*/
+
+}
+function idea_costs_form_submit ($form, &$form_state){
+	// debug($form_state['input']);
+	
+	$output_data_capex = array(); //Запись capex таблицы
+	$count_capex_row = 1; //счетчик строк capex
+ 	$capex_row_test = []; //массив проверочных ключей строк
+	
+	$output_data_opex = array(); //Запись opex таблицы
+	$count_opex_row = 1; //счетчик строк capex
+ 	$opex_row_test = []; //массив проверочных ключей строк
+
+ 	// $field_coasts_data = array(); //data for save into coasts field
+
+ 	// cache_clear_all();
+
+	 $output_data_capex = $output_data_opex  = array(
+		'caption' => '',
+		'rebuild'	=> array(
+			'count_cols' => '',
+			'count_rows' => '', //Добавить динамическое количество строк
+			'rebuild' => 'Rebuild Table',
+		),
+		'import' => array (
+		    'file' => '',
+		    'import' => 'Upload CSV',
+		  ),
+	  'paste' => array (
+		    'paste_delimiter' => '',
+		    'data' => '',
+		    'paste_import' => 'Import & Rebuild',
+		  ),
+	  'tabledata' => array(
+	  		'row_0' => array(
+	  				'col_0' => 'Title',
+	  				'col_1' => 'Amount',
+	  				'col_2' => 'Quantity',
+	  				'weight' => 1,
+	  			),
+	  	),
+	);
+	 $output_data_capex['rebuild']['count_cols'] = '3';
+	 $output_data_opex['rebuild']['count_cols'] = '4';
+	 $output_data_opex['tabledata']['row_0']['col_3'] = 'Period';
+	// $output_data_capex['tabledata']['row_'.$count_capex_row]
+
+	foreach ($form_state['input'] as $key => $value) {
+
+		if (preg_match('/^capex-cost-([a-zA-Z]*)-([0-9])$/', $key, $matches)){
+			// debug($matches);
+			if (!in_array($matches[2] ,$capex_row_test )) {
+				$capex_row_test[] = $matches[2];
+				$output_data_capex['tabledata']['row_'.$count_capex_row]['col_0'] = $form_state['input']['capex-cost-title-'.$matches[2]];
+				$output_data_capex['tabledata']['row_'.$count_capex_row]['col_1'] = $form_state['input']['capex-cost-amount-'.$matches[2]];
+				$output_data_capex['tabledata']['row_'.$count_capex_row]['col_2'] = $form_state['input']['capex-cost-quantity-'.$matches[2]];
+				$output_data_capex['tabledata']['row_'.$count_capex_row]['weight'] = $count_capex_row + 1;
+				$count_capex_row++;
+
+			} 
+		}
+
+		if (preg_match('/^opex-cost-([a-zA-Z]*)-([0-9])$/', $key, $matches)){
+			if (!in_array($matches[2] ,$opex_row_test )) {
+				$opex_row_test[] = $matches[2];
+				$output_data_opex['tabledata']['row_'.$count_opex_row]['col_0'] = $form_state['input']['opex-cost-title-'.$matches[2]];
+				$output_data_opex['tabledata']['row_'.$count_opex_row]['col_1'] = $form_state['input']['opex-cost-amount-'.$matches[2]];
+				$output_data_opex['tabledata']['row_'.$count_opex_row]['col_2'] = $form_state['input']['opex-cost-quantity-'.$matches[2]];
+				$output_data_opex['tabledata']['row_'.$count_opex_row]['col_3'] = $form_state['input']['opex-cost-period-'.$matches[2]];
+				$output_data_opex['tabledata']['row_'.$count_opex_row]['weight'] = $count_opex_row + 1;
+				$count_opex_row++;
+
+			} 
+		}
+	} //end of foreach
+	$output_data_capex['rebuild']['count_rows'] = (string) $count_capex_row;
+	$output_data_opex['rebuild']['count_rows'] = (string) $count_opex_row;
+
+	$field_coasts_data = array(
+			'und' => array(
+					0 => array(
+							'value' => serialize($output_data_capex),
+							'format' => NULL,
+							'tabledata' => $output_data_capex,
+							'tablefield' => $output_data_capex,
+						),
+					1 => array(
+							'value' => serialize($output_data_opex),
+							'format' => NULL,
+							'tabledata' => $output_data_opex,
+							'tablefield' => $output_data_opex,
+						),
+				),
+		);
+	$node = node_load($form_state['input']['idea_id']);
+	if ($count_opex_row == 1 && $count_capex_row == 1) {
+
+	} elseif ($count_opex_row == 1) {
+		$node->type == 'idea' ? $node->field_costs['und'][0] = $field_coasts_data['und'][0] : $node->field_project_costs['und'][0] = $field_coasts_data['und'][0] ;
+		// $node->field_costs['und'][0] = $field_coasts_data['und'][0];
+		node_save($node);
+	} elseif ($count_capex_row == 1) {
+		$node->type == 'idea' ? $node->field_costs['und'][1] = $field_coasts_data['und'][1] : $node->field_project_costs['und'][1] = $field_coasts_data['und'][1] ;
+		// $node->field_costs['und'][1] = $field_coasts_data['und'][1];
+		node_save($node);
+	} else{
+		$node->type == 'idea' ? $node->field_costs = $field_coasts_data : $node->field_project_costs = $field_coasts_data ;
+		node_save($node);
+	}
+}
+function idea_incomes_form ($form, &$form_state){
+	$form = array();
+
+  $form['idea_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['idea_rev_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save incomes'),
+    // '#id' => 'btn-unselect-idea',
+  );
+
+  return $form;
+}
+function idea_incomes_form_validate ($form, &$form_state){
+	/*foreach ($form_state['input'] as $key => $value) {
+		if (preg_match('/^income-amount/', $key) || preg_match('/^income-quantity/', $key ) || preg_match('/^income-period/', $key )){
+			is_numeric($value) ? : form_set_error('', t("All filed should be contain a integer type")); ;
+		}
+	}*/
+}
+function idea_incomes_form_submit ($form, &$form_state){
+	$output_data_incomes = array(); //Запись capex таблицы
+	$count_incomes_row = 1; //счетчик строк capex
+ 	$incomes_row_test = []; //массив проверочных ключей строк
+
+ 	$output_data_incomes = array(
+		'caption' => '',
+		'rebuild'	=> array(
+			'count_cols' => '4',
+			'count_rows' => '', //Добавить динамически количество строк
+			'rebuild' => 'Rebuild Table',
+		),
+		'import' => array (
+		    'file' => '',
+		    'import' => 'Upload CSV',
+		  ),
+	  'paste' => array (
+		    'paste_delimiter' => '',
+		    'data' => '',
+		    'paste_import' => 'Import & Rebuild',
+		  ),
+	  'tabledata' => array(
+	  		'row_0' => array(
+	  				'col_0' => 'Title',
+	  				'col_1' => 'Amount',
+	  				'col_2' => 'Quantity',
+	  				'col_3' => 'Period',
+	  				'weight' => 1,
+	  			),
+	  	),
+	);
+
+ 	foreach ($form_state['input'] as $key => $value) {
+		if (preg_match('/^income-([a-zA-Z]*)-([0-9])$/', $key, $matches)){
+			if (!in_array($matches[2] ,$incomes_row_test )) {
+				$incomes_row_test[] = $matches[2];
+				$output_data_incomes['tabledata']['row_'.$count_incomes_row]['col_0'] = $form_state['input']['income-title-'.$matches[2]];
+				$output_data_incomes['tabledata']['row_'.$count_incomes_row]['col_1'] = $form_state['input']['income-amount-'.$matches[2]];
+				$output_data_incomes['tabledata']['row_'.$count_incomes_row]['col_2'] = $form_state['input']['income-quantity-'.$matches[2]];
+				$output_data_incomes['tabledata']['row_'.$count_incomes_row]['col_3'] = $form_state['input']['income-period-'.$matches[2]];
+				$output_data_incomes['tabledata']['row_'.$count_incomes_row]['weight'] = $count_incomes_row + 1;
+				$count_incomes_row++;
+
+			} 
+		}
+	} //end of foreach
+	$output_data_incomes['rebuild']['count_rows'] = (string) $count_incomes_row;
+
+	$field_incomes_data = array(
+		'und' => array(
+			0 => array(
+					'value' => serialize($output_data_incomes),
+					'format' => NULL,
+					'tabledata' => $output_data_incomes,
+					'tablefield' => $output_data_incomes,
+			),
+		)
+	);	
+	// debug($output_data_incomes);
+	$node = node_load($form_state['input']['idea_id']);
+
+	
+	if ($count_incomes_row != 1) {
+		$node->type == 'idea' ? $node->field_incomes = $field_incomes_data : $node->field_project_incomes = $field_incomes_data ;
+		node_save($node);
+	}
+
+	// debug($form_state);
+}
+/**
+ * Форма формирования отчета
+ */
+function idea_report_form ($form, &$form_state)
+{
+	$form = array();
+
+  $form['idea_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['idea_rev_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Get report'),
+    /*'#ajax' => array(
+      'callback' => 'idea_report_form_submit_ajax',
+      // 'wrapper' => 'box',
+    ),*/
+    // '#id' => 'btn-unselect-idea',
+  );
+
+  return $form;
+}
+function idea_report_form_validate ($form, &$form_state)
+{
+
+}
+function idea_report_form_submit ($form, &$form_state)
+{
+	$node = node_load($form_state['input']['idea_id']);
+	$costs = _costs_on_months($node);
+	$incomes = _incomes_on_month($node);
+
+
+	$field_report_data = _get_report($costs, $incomes);
+
+	$field_report_data = array(
+		'und' => array(
+			0 => array(
+					'value' => serialize($field_report_data),
+					'format' => NULL,
+					'tabledata' => $field_report_data,
+					'tablefield' => $field_report_data,
+			),
+		)
+	);
+	$node->type == 'idea' ? $node->field_report = $field_report_data : $node->field_project_report = $field_report_data ;
+	// $node_idea->field_report = $field_report_data;
+	node_save($node);
+
+}
+function idea_selected_to_realization_form ($form, &$form_state) {
+	$form = array();
+
+  $form['idea_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['select_idea'] = array(
+    '#type' => 'submit',
+    '#value' => t('Choose idea to realization'),
+    '#id' => 'btn-choose-idea',
+  );
+
+  $form['unselect_idea'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel idea to realization'),
+    '#id' => 'btn-cancel-idea',
+  );
+
+  return $form;
+}
+function idea_selected_to_realization_form_validate ($form, &$form_state) {
+	
+}
+function idea_selected_to_realization_form_submit ($form, &$form_state) {
+
+	$idea_id = $form_state['input']['idea_id'];
+	$idea = node_load($idea_id);
+	if ($form_state['clicked_button']['#id'] == 'btn-choose-idea') {
+		$idea->field_choose_realization = array (
+			  'und' => 
+			  array (
+			    0 => 
+			    array (
+			      'value' => '1',
+			    ),
+			  ),
+			);
+	} else {
+		$idea->field_choose_realization = array ();
+	}
+	node_save($idea);
+}
+/**
+ * Form of project (update stage)
+ */
+function update_stage_form ($form, &$form_state){
+	$form = array();
+
+  $form['project_id'] = array(
+    '#type' => 'hidden',
+    '#value' => '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Next stage'),
+    '#id' => 'btn-update-stage',
+  );
+
+  return $form;
+}
+function update_stage_form_validate ($form, &$form_state){
+	
+}
+function update_stage_form_submit ($form, &$form_state){
+	$project_id = $form_state['input']['project_id'];
+	$project = node_load($project_id);
+	$project->field_stage['und'][0]['tid'] = $project->field_stage['und'][0]['tid'] + 1;
+	node_save($project);
+
+	switch ($project->field_stage['und'][0]['tid']) {
+		case '1':
+			$project->field_percent['und'][0]['value'] = '0';
+			break;
+		case '2':
+			$project->field_percent['und'][0]['value'] = '17';
+			break;
+		case '3':
+			$project->field_percent['und'][0]['value'] = '34';
+			break;
+		case '4':
+			$project->field_percent['und'][0]['value'] = '51';
+			break;
+		case '5':
+			$project->field_percent['und'][0]['value'] = '68';
+			break;
+		case '6':
+			$project->field_percent['und'][0]['value'] = '85';
+			break;
+		case '7':
+			$project->field_percent['und'][0]['value'] = '100';
+			break;
+		
+	}
+	node_save($project);
+	// $node->field_percent['und'][0]['value']
+}
+/**
+ * Подсчет всех расходов - возращает массив [ месяц => расход ]
+ */
+function _costs_on_months ($node)
+{
+	// $node->type == 'idea' ? $node->field_report = $field_report_data : $node->field_project_report = $field_report_data ;
+	if ($node->type == 'idea') {
+		$capex = isset($node->field_costs['und'][0]) ? $node->field_costs['und'][0] : false ;
+		$opex = isset($node->field_costs['und'][1]) ? $node->field_costs['und'][1] : false ;
+	} else {
+		$capex = isset($node->field_project_costs['und'][0]) ? $node->field_project_costs['und'][0] : false ;
+		$opex = isset($node->field_project_costs['und'][1]) ? $node->field_project_costs['und'][1] : false ;
+	}
+	$costs = array(); //массив на выход - кажый элемент - расходы за месяц
+	$costs_capex = 0;
+	$rows_capex = $capex['tabledata']['rebuild']['count_rows'] - 1;
+	$rows_opex = $opex['tabledata']['rebuild']['count_rows'] - 1;
+	// debug($rows);
+	$row_opex = 1 ; //текущая строка
+	$row_capex = 1 ; //текущая строка
+	$period = 0;
+
+
+	//Создание массива и заполнение opex данными
+	//Формирование суммы opex зтарат и запись в массив по месяцам (ключи)
+	if ($opex) {
+		while ($row_opex <= $rows_opex) {
+			$period = $opex['tabledata']['tabledata']['row_'.$row_opex]['col_3'];
+			// debug($period);
+			for ($i=1; $i <= $period; $i++) { 
+				isset($costs[$i]) ?  $costs[$i]+=$opex['tabledata']['tabledata']['row_'.$row_opex]['col_1'] * $opex['tabledata']['tabledata']['row_'.$row_opex]['col_2'] : $costs[$i]=$opex['tabledata']['tabledata']['row_'.$row_opex]['col_1'] * $opex['tabledata']['tabledata']['row_'.$row_opex]['col_2'];	 
+
+
+			} 
+			$row_opex++;
+		}
+	} else $costs[1] = 0;
+
+	//Формирование суммы capex затрат
+	if ($capex) {
+		while ($row_capex <= $rows_capex) {
+			isset($costs_capex) ?  $costs_capex+=$capex['tabledata']['tabledata']['row_'.$row_capex]['col_1'] * $capex['tabledata']['tabledata']['row_'.$row_capex]['col_2'] : $costs_capex=$capex['tabledata']['tabledata']['row_'.$row_capex]['col_1'] * $capex['tabledata']['tabledata']['row_'.$row_capex]['col_2'];	 
+
+			$row_capex++;
+		}
+	} else $costs_capex = 0;
+
+	//Запись всех costs затрат в первый месяц
+	$costs[1] += $costs_capex;
+	
+	return $costs;
+}
+/**
+ * Подсчет всех доходов - возращает массив [ месяц => доход ]
+ */
+function _incomes_on_month ($node)
+{
+	if ($node->type == 'idea') {
+		$income_fields = isset($node->field_incomes['und'][0]) ? $node->field_incomes['und'][0] : false ;
+	} else {
+		$income_fields = isset($node->field_project_incomes['und'][0]) ? $node->field_project_incomes['und'][0] : false ;
+	}
+	$incomes = array(); //массив на выход - кажый элемент - доходы за месяц
+	$rows_incomes = $income_fields['tabledata']['rebuild']['count_rows'] - 1;
+	$row_incomes = 1 ; //текущая строка
+	$period = 0;
+
+	if ($income_fields) {
+		while ($row_incomes <= $rows_incomes) {
+			$period = $income_fields['tabledata']['tabledata']['row_'.$row_incomes]['col_3'];
+			// debug($period);
+			for ($i=1; $i <= $period; $i++) { 
+				isset($incomes[$i]) ?  $incomes[$i]+=$income_fields['tabledata']['tabledata']['row_'.$row_incomes]['col_1'] * $income_fields['tabledata']['tabledata']['row_'.$row_incomes]['col_2'] : $incomes[$i]=$income_fields['tabledata']['tabledata']['row_'.$row_incomes]['col_1'] * $income_fields['tabledata']['tabledata']['row_'.$row_incomes]['col_2'];	 
+
+
+			} 
+			$row_incomes++;
+		}
+	} else $incomes[1] = 0;
+	return $incomes;
+}
+/**
+ * Формирование выходных данных отчета
+ */
+function _get_report ($costs, $incomes)
+{
+	$output_data_report = array(); //Запись capex таблицы
+	$count_months = count($costs) > count($incomes) ? count($costs) : count($incomes) ; //счетчик строк capex
+ 	// $incomes_row_test = []; //массив проверочных ключей строк
+ 	$costs_now = 0; //количество затрат на текущее число
+ 	$incomes_now = 0;// Доход на текущий период
+ 	$count_report_row = 1;
+
+ 	$output_data_report = array(
+		'caption' => '',
+		'rebuild'	=> array(
+			'count_cols' => '5',
+			'count_rows' => '', //Добавить динамически количество строк
+			'rebuild' => 'Rebuild Table',
+		),
+		'import' => array (
+		    'file' => '',
+		    'import' => 'Upload CSV',
+		  ),
+	  'paste' => array (
+		    'paste_delimiter' => '',
+		    'data' => '',
+		    'paste_import' => 'Import & Rebuild',
+		  ),
+	  'tabledata' => array(
+	  		'row_0' => array(
+	  				'col_0' => 'Month',
+	  				'col_1' => 'Costs',
+	  				'col_2' => 'Incomes',
+	  				'col_3' => 'Net profit',
+	  				'col_4' => 'ROI (%)',
+	  				'weight' => 1,
+	  			),
+	  	),
+	);
+
+ 	for ($i=1; $i <= $count_months; $i++) { 
+ 		$cost = isset($costs[$i]) ? $costs[$i] : 0 ;
+ 		$income = isset($incomes[$i]) ? $incomes[$i] : 0 ;
+ 		
+ 		$costs_now += $cost;
+ 		$incomes_now += $income;
+
+
+ 		$output_data_report['tabledata']['row_'.$i]['col_0'] = $i;
+		$output_data_report['tabledata']['row_'.$i]['col_1'] = $cost;
+		$output_data_report['tabledata']['row_'.$i]['col_2'] = $income;
+		$output_data_report['tabledata']['row_'.$i]['col_3'] = $income - $cost;
+		$output_data_report['tabledata']['row_'.$i]['col_4'] =  $costs_now ? round((($incomes_now - $costs_now) / $costs_now) * 100, 2) : 0;
+		$output_data_report['tabledata']['row_'.$i]['weight'] = $i + 1;
+		$count_report_row++;
+ 	}
+
+	$output_data_report['rebuild']['count_rows'] = (string) $count_report_row;
+
+	return $output_data_report;
+
+}

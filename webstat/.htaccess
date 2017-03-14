@@ -1,0 +1,7 @@
+AuthType Basic
+AuthName "/www/california.d-server.antalika.com/webstat"
+AuthUserFile /var/www/california/data/etc/3769262.passwd
+DirectoryIndex index.html
+<Limit GET POST>
+	require valid-user
+</Limit>
